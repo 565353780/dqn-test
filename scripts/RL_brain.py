@@ -30,6 +30,7 @@ class DeepQNetwork:
             batch_size=32,
             e_greedy_increment=None,
             output_graph=False,
+            checkpoint_idx=0
     ):
         self.n_actions = n_actions
         self.n_features = n_features
@@ -55,6 +56,7 @@ class DeepQNetwork:
         self.replace_target_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
 
         self.sess = tf.Session()
+        self.m_saver = tf.train.Saver()
 
         if output_graph:
             # $ tensorboard --logdir=logs
@@ -63,6 +65,10 @@ class DeepQNetwork:
 
         self.sess.run(tf.global_variables_initializer())
         self.cost_his = []
+
+        if checkpoint_idx > 0:
+            saver = tf.train.import_meta_graph('checkpoints/DQN_test-' + str(checkpoint_idx) + '.meta')
+            saver.restore(self.sess, 'checkpoints/DQN_test-' + str(checkpoint_idx))
 
     def _build_net(self):
         # ------------------ build evaluate_net ------------------
@@ -92,7 +98,7 @@ class DeepQNetwork:
             self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
 
         # ------------------ build target_net ------------------
-        self.s_ = tf.placeholder(tf.float32, [None, self.n_features], name='s_')    # input
+        self.s_ = tf.placeholder(tf.float32, [None, self.n_features], name='s_')  # input
         with tf.variable_scope('target_net'):
             # c_names(collections_names) are the collections to store variables
             c_names = ['target_net_params', tf.GraphKeys.GLOBAL_VARIABLES]
@@ -200,3 +206,6 @@ class DeepQNetwork:
         plt.ylabel('Cost')
         plt.xlabel('training steps')
         plt.show()
+
+    def save(self, episode):
+        self.m_saver.save(self.sess, "checkpoints/DQN_test", global_step=episode)
